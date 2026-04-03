@@ -1,0 +1,28 @@
+[package]
+name = "gpgui"
+version = "2.5.1"
+authors = ["Elane Faisal-Sage <elane@linux.com>"]
+license = "GPL-2.0"
+rust-version = "1.85"
+edition = "2024"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+gpapi = { git = "https://github.com/yuezk/GlobalProtect-openconnect", features = ["clap", "webview-auth"] }
+common = { git = "https://github.com/yuezk/GlobalProtect-openconnect" }
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+log = "0.4"
+clap = { version = "4", features = ["derive"] }
+compile-time = "0.2"
+env_logger = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures-util = "0.3"
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+
+[features]
+default = ["tauri/custom-protocol"]
