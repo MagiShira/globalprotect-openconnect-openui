@@ -237,7 +237,7 @@ export default function App() {
           <Box sx={{ flex: 1 }} />
           <IconButton
             size="small"
-            onClick={() => window.open("https://github.com/yuezk/GlobalProtect-openconnect")}
+            onClick={() => invoke("open_url", { url: "https://github.com/MagiShira/globalprotect-openconnect-openui" })}
           >
             <GitHubIcon fontSize="small" />
           </IconButton>

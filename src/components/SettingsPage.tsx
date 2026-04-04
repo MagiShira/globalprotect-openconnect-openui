@@ -502,7 +502,7 @@ function LicenseSection() {
         href="https://www.fsf.org/about/what-is-free-software"
         onClick={(e) => {
           e.preventDefault();
-          window.open("https://www.fsf.org/about/what-is-free-software");
+          invoke("open_url", { url: "https://www.fsf.org/about/what-is-free-software" });
         }}
       >
         Why free software?
@@ -576,7 +576,7 @@ function AboutSection() {
           variant="body2"
           onClick={(e) => {
             e.preventDefault();
-            window.open("https://github.com/yuezk/GlobalProtect-openconnect");
+            invoke("open_url", { url: "https://github.com/yuezk/GlobalProtect-openconnect" });
           }}
         >
           GlobalProtect-openconnect by yuezk

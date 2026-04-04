@@ -32,6 +32,7 @@ impl App {
         connect_password,
         disconnect,
         open_settings,
+        open_url,
         clear_credentials,
       ])
       .setup(move |app| {
