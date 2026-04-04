@@ -7,6 +7,10 @@ An open-source graphical front-end for the [GlobalProtect-openconnect](https://g
 
 GP OpenUI is a custom GUI for the `gpclient` / `gpservice` daemon stack from [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect). It replaces the upstream `gpgui` binary with a free and open-source interface built with [Tauri](https://tauri.app) (Rust + React).
 
+### Why?
+
+The upstream `gpgui` binary is proprietary-- you can't study, modify, or share it. For a VPN client handling your credentials and network traffic, that matters. GP OpenUI is [free software](https://www.fsf.org/about/what-is-free-software).
+
 ## Features
 
 - **Password authentication** — standard username/password login
