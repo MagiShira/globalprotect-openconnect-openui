@@ -12,7 +12,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 gpapi = { git = "https://github.com/yuezk/GlobalProtect-openconnect", features = ["clap", "webview-auth"] }
 common = { git = "https://github.com/yuezk/GlobalProtect-openconnect" }
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
 log = "0.4"
