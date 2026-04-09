@@ -222,6 +222,11 @@ pub fn open_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn quit_app(app: AppHandle) {
+  app.exit(0);
+}
+
+#[tauri::command]
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {
   use gpapi::service::request::DisconnectRequest;
 
