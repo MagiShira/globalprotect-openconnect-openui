@@ -48,8 +48,14 @@ impl Cli {
   }
 }
 
-/// Detect the display backend and configure environment variables accordingly.
-/// Supports both Wayland (native) and X11, preferring Wayland when available.
+fn is_kde_session() -> bool {
+  std::env::var("XDG_CURRENT_DESKTOP")
+    .map(|d| d.to_ascii_lowercase().contains("kde"))
+    .unwrap_or(false)
+    || std::env::var("KDE_FULL_SESSION").is_ok()
+    || std::env::var("KDE_SESSION_VERSION").is_ok()
+}
+
 fn configure_display_backend() {
   // Respect an explicitly set GDK_BACKEND
   if std::env::var("GDK_BACKEND").is_ok() {
@@ -62,18 +68,17 @@ fn configure_display_backend() {
       .unwrap_or(false);
 
   unsafe {
-    if is_wayland {
-      // Native Wayland — tell GTK 3 to use the Wayland backend explicitly,
-      // since it otherwise defaults to XWayland. Compositing mode is fine
-      // on Wayland so we leave WEBKIT_DISABLE_COMPOSITING_MODE unset.
+    if is_wayland && !is_kde_session() {
       std::env::set_var("GDK_BACKEND", "wayland");
       info!("Display backend: Wayland");
     } else {
-      // X11 — disable WebKit compositing to avoid the blank-screen bug
-      // that affects some X11 compositors.
       std::env::set_var("GDK_BACKEND", "x11");
       std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-      info!("Display backend: X11");
+      if is_wayland {
+        info!("Display backend: XWayland (KDE session)");
+      } else {
+        info!("Display backend: X11");
+      }
     }
   }
 }
