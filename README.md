@@ -27,7 +27,7 @@ The upstream `gpgui` binary is proprietary-- you can't study, modify, or share i
 ## Roadmap
 
 - [ ] **Manual gateway selection** — the app currently auto-selects the first gateway returned by the portal
-- [ ] **System tray integration** — minimize to tray, tray icon menu
+- [x] **System tray integration** — minimize to tray, tray icon menu
 - [ ] **Auto-start on login** — launch with the system and connect automatically
 - [ ] **Resume on wake** — reconnect automatically after the system wakes from sleep
 
