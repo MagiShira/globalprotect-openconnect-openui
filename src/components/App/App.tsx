@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   CssBaseline,
@@ -13,13 +14,13 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Divider,
   Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SettingsIcon from "@mui/icons-material/Settings";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import { VpnState, PreloginType } from "../../types";
 import DisconnectedView from "../DisconnectedView";
 import ConnectingView from "../ConnectingView";
@@ -81,10 +82,64 @@ export default function App() {
       setIsAuthenticating(false);
     });
 
+    const unlistenTrayConnect = listen("tray-connect-requested", async () => {
+      const s = JSON.parse(localStorage.getItem("gpopenui_settings") ?? "{}");
+      const savedPortal = localStorage.getItem(PORTAL_KEY);
+
+      const showWindow = async () => {
+        const win = getCurrentWindow();
+        await win.show();
+        await win.setFocus();
+      };
+
+      if (!savedPortal || !(s.reuseAuthCookies ?? true)) {
+        await showWindow();
+        return;
+      }
+
+      setIsAuthenticating(true);
+      setConnectError(null);
+      try {
+        const prelogin = await invoke<PreloginType>("get_prelogin", { portal: savedPortal });
+        if (prelogin.type !== "saml") {
+          setIsAuthenticating(false);
+          await showWindow();
+          return;
+        }
+        await invoke("connect_saml", {
+          portal: savedPortal,
+          browser: null,
+          reuseAuthCookies: true,
+          useExternalBrowser: s.useExternalBrowser ?? false,
+          certificate: s.useClientCertificate ? (s.clientCertificate ?? null) : null,
+          sslkey: s.useClientCertificate ? (s.clientKey ?? null) : null,
+          keyPassword: s.useClientCertificate ? (s.keyPassphrase ?? null) : null,
+          disableIpv6: s.disableIPv6 ?? false,
+          noDtls: s.noDtls ?? false,
+        });
+        // connect_saml succeeded — connection proceeds in the background
+      } catch {
+        // Silent connect failed (cookies likely expired) — open window for manual sign-in
+        setIsAuthenticating(false);
+        await showWindow();
+      }
+    });
+
+    const unlistenCloseRequested = listen("window-close-requested", async () => {
+      const s = JSON.parse(localStorage.getItem("gpopenui_settings") ?? "{}");
+      if (s.closeWindowBehavior === "quit") {
+        await invoke("quit_app");
+      } else {
+        await getCurrentWindow().minimize();
+      }
+    });
+
     return () => {
       unlistenState.then((u) => u());
       unlistenServiceErr.then((u) => u());
       unlistenDisconnected.then((u) => u());
+      unlistenTrayConnect.then((u) => u());
+      unlistenCloseRequested.then((u) => u());
     };
   }, []);
 
@@ -253,10 +308,13 @@ export default function App() {
             <ListItemIcon><DeleteOutlineIcon fontSize="small" /></ListItemIcon>
             <ListItemText>Clear Credentials</ListItemText>
           </MenuItem>
-          <Divider />
           <MenuItem onClick={() => handleOpenSettings()}>
             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
             <ListItemText>Settings</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => { setMenuAnchor(null); invoke("quit_app"); }}>
+            <ListItemIcon><PowerSettingsNewIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Quit</ListItemText>
           </MenuItem>
         </Menu>
 

@@ -58,6 +58,7 @@ interface ConnectionDefaults {
 
 type ThemeMode = "light" | "system" | "dark";
 type ClientOs = "linux" | "windows" | "macos";
+type CloseWindowBehavior = "minimize" | "quit";
 
 interface Settings {
   // General
@@ -67,6 +68,7 @@ interface Settings {
   autoConnect: boolean;
   resumeOnWake: boolean;
   symbolicTrayIcon: boolean;
+  closeWindowBehavior: CloseWindowBehavior;
   // Connection
   clientOs: ClientOs;
   osVersion: string;
@@ -95,6 +97,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoConnect: false,
   resumeOnWake: false,
   symbolicTrayIcon: false,
+  closeWindowBehavior: "minimize",
   clientOs: "linux",
   osVersion: "",
   clientVersion: "",
@@ -277,6 +280,15 @@ function GeneralSection({
         label="Use Symbolic Tray Icon"
         description="Use a monochrome symbolic icon in the system tray."
         onChange={(v) => set({ symbolicTrayIcon: v })}
+      />
+
+      <Divider />
+
+      <SettingCheckbox
+        checked={s.closeWindowBehavior === "minimize"}
+        label="Minimize to Tray on Close"
+        description="When checked, clicking the window's close (✕) button minimizes to the system tray instead of quitting."
+        onChange={(v) => set({ closeWindowBehavior: v ? "minimize" : "quit" })}
       />
     </Stack>
   );
