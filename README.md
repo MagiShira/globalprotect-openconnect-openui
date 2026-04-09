@@ -3,6 +3,10 @@ An open-source graphical front-end for the [GlobalProtect-openconnect](https://g
 
 > **Disclaimer:** This is an unofficial third-party client and is not affiliated with or endorsed by Palo Alto Networks. GlobalProtect is a registered trademark of Palo Alto Networks.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f19f05b5-1818-4f48-98be-4fc5b83b605f" />
+</p>
+
 ## About
 
 GP OpenUI is a custom GUI for the `gpclient` / `gpservice` daemon stack from [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect). It replaces the upstream `gpgui` binary with a free and open-source interface built with [Tauri](https://tauri.app) (Rust + React).
