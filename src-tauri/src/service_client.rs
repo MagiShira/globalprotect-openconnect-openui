@@ -7,7 +7,7 @@ use gpapi::{
 };
 use log::{info, warn};
 use tauri::{AppHandle, Emitter};
-use tokio::sync::mpsc;
+use tokio::sync::{Mutex, mpsc};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 pub struct ServiceClient {
@@ -24,6 +24,7 @@ impl ServiceClient {
 pub async fn connect_to_service(
   api_key: Vec<u8>,
   app_handle: AppHandle,
+  client_store: Arc<Mutex<Option<ServiceClient>>>,
 ) -> anyhow::Result<ServiceClient> {
   let endpoint = ws_endpoint().await?;
   let crypto = Arc::new(Crypto::new(api_key));
@@ -73,11 +74,13 @@ pub async fn connect_to_service(
         }
         Ok(Message::Close(_)) => {
           info!("gpservice closed the connection");
+          *client_store.lock().await = None;
           let _ = app_handle.emit("service-disconnected", ());
           break;
         }
         Err(e) => {
           warn!("WebSocket error: {}", e);
+          *client_store.lock().await = None;
           let _ = app_handle.emit("service-disconnected", ());
           break;
         }

@@ -196,10 +196,7 @@ impl App {
                       warn!("Disconnect requested from tray, but no client is connected");
                     }
                   } else {
-                    if let Err(e) = app_clone.emit_to("main", "tray-connect-requested", ()) {
-                      warn!("Failed to emit tray-connect-requested: {}", e);
-                      let _ = toggle_main_window(&app_clone);
-                    }
+                    let _ = app_clone.emit_to("main", "tray-connect-requested", ());
                   }
                 });
               }
@@ -241,22 +238,29 @@ impl App {
                 VpnState::Disconnected => TrayStatus::Disconnected,
               };
               tauri::async_runtime::spawn(async move {
-                let prev = *vs.lock().await;
-                *vs.lock().await = new_status;
+                let prev = {
+                  let mut guard = vs.lock().await;
+                  let prev = *guard;
+                  *guard = new_status;
+                  prev
+                };
 
-                if new_status == TrayStatus::Connected && prev != TrayStatus::Connected {
-                  *cat.lock().await = Some(Instant::now());
+                let at = if new_status == TrayStatus::Connected && prev != TrayStatus::Connected {
+                  let now = Instant::now();
+                  *cat.lock().await = Some(now);
+                  Some(now)
                 } else if new_status != TrayStatus::Connected {
                   *cat.lock().await = None;
-                }
+                  None
+                } else {
+                  *cat.lock().await
+                };
 
                 let label = if new_status == TrayStatus::Connected { "Disconnect" } else { "Connect" };
                 if let Err(e) = item.set_text(label) {
                   warn!("Failed to update tray item text: {}", e);
                 }
 
-                // Update tooltip immediately so status text doesn't lag behind
-                let at = *cat.lock().await;
                 if let Some(tray) = app_handle.tray_by_id("main-tray") {
                   let _ = tray.set_tooltip(Some(new_status.tooltip(at).as_str()));
                 }
@@ -298,7 +302,7 @@ impl App {
 
         // Connect to gpservice in the background
         tauri::async_runtime::spawn(async move {
-          match connect_to_service(api_key, app_handle.clone()).await {
+          match connect_to_service(api_key, app_handle.clone(), Arc::clone(&client_store)).await {
             Ok(client) => {
               info!("Connected to gpservice");
               *client_store.lock().await = Some(client);

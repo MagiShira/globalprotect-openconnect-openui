@@ -47,8 +47,8 @@ fn build_gp_params(cert: &CertConfig) -> GpParams {
     .build()
 }
 
-pub async fn get_prelogin(portal: &str) -> anyhow::Result<PreloginInfo> {
-  let gp_params = build_gp_params(&CertConfig { certificate: None, sslkey: None, key_password: None });
+pub async fn get_prelogin(portal: &str, cert: CertConfig) -> anyhow::Result<PreloginInfo> {
+  let gp_params = build_gp_params(&cert);
   let result = prelogin(portal, &gp_params).await?;
 
   let info = match result {
