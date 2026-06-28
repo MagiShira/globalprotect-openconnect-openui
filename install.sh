@@ -24,12 +24,6 @@ warn()    { printf '\033[0;33m[WARN]\033[0m  %s\n' "$*"; }
 error()   { printf '\033[0;31m[ERROR]\033[0m %s\n' "$*" >&2; }
 die()     { error "$*"; exit 1; }
 
-need_root() {
-  if [[ $EUID -ne 0 ]]; then
-    die "This step requires root. Re-run with sudo or as root."
-  fi
-}
-
 have() { command -v "$1" &>/dev/null; }
 
 detect_pm() {
@@ -153,41 +147,8 @@ install_gp_upstream() {
     return
   fi
 
-  local pm
-  pm="$(detect_pm)"
-
   info "Installing GlobalProtect-openconnect from upstream..."
-
-  case "$pm" in
-    apt)
-      # Add the upstream GPG key + apt repository, then install
-      sudo mkdir -p /etc/apt/keyrings
-      curl -fsSL https://yuezk.github.io/GlobalProtect-openconnect/globalprotect-openconnect.gpg \
-        | sudo tee /etc/apt/keyrings/globalprotect-openconnect.gpg >/dev/null
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/globalprotect-openconnect.gpg] \
-https://yuezk.github.io/GlobalProtect-openconnect/apt stable main" \
-        | sudo tee /etc/apt/sources.list.d/globalprotect-openconnect.list >/dev/null
-      sudo apt-get update -q
-      sudo apt-get install -y globalprotect-openconnect
-      ;;
-    dnf)
-      sudo dnf config-manager --add-repo \
-        https://yuezk.github.io/GlobalProtect-openconnect/rpm/globalprotect-openconnect.repo
-      sudo dnf install -y globalprotect-openconnect
-      ;;
-    pacman)
-      if have yay; then
-        yay -Sy --needed --noconfirm globalprotect-openconnect-git
-      elif have paru; then
-        paru -Sy --needed --noconfirm globalprotect-openconnect-git
-      else
-        warn "No AUR helper found. Install globalprotect-openconnect-git from the AUR manually, then re-run."
-        warn "  yay -S globalprotect-openconnect-git"
-        exit 1
-      fi
-      ;;
-  esac
-
+  curl -fsSL "$GP_UPSTREAM_INSTALL_URL" | sudo bash
   info "GlobalProtect-openconnect installed."
 }
 
