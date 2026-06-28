@@ -1,6 +1,6 @@
 [package]
 name = "gpgui"
-version = "2.5.1"
+version = "2.6.4"
 authors = ["Elane Faisal-Sage <elane@linux.com>"]
 license = "GPL-2.0"
 rust-version = "1.85"
