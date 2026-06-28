@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -50,6 +50,8 @@ export default function App() {
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const samlInFlightRef = useRef(false);
+  const samlCancelledRef = useRef(false);
 
   useEffect(() => {
     if (portal) localStorage.setItem(PORTAL_KEY, portal);
@@ -97,13 +99,27 @@ export default function App() {
         return;
       }
 
+      if (samlInFlightRef.current) {
+        await showWindow();
+        return;
+      }
+
+      samlInFlightRef.current = true;
+      samlCancelledRef.current = false;
       setIsAuthenticating(true);
       setConnectError(null);
       try {
-        const prelogin = await invoke<PreloginType>("get_prelogin", { portal: savedPortal });
+        const prelogin = await invoke<PreloginType>("get_prelogin", {
+          portal: savedPortal,
+          certificate: s.useClientCertificate ? (s.clientCertificate ?? null) : null,
+          sslkey: s.useClientCertificate ? (s.clientKey ?? null) : null,
+          keyPassword: s.useClientCertificate ? (s.keyPassphrase ?? null) : null,
+        });
         if (prelogin.type !== "saml") {
-          setIsAuthenticating(false);
-          await showWindow();
+          if (!samlCancelledRef.current) {
+            setIsAuthenticating(false);
+            await showWindow();
+          }
           return;
         }
         await invoke("connect_saml", {
@@ -119,9 +135,12 @@ export default function App() {
         });
         // connect_saml succeeded — connection proceeds in the background
       } catch {
-        // Silent connect failed (cookies likely expired) — open window for manual sign-in
-        setIsAuthenticating(false);
-        await showWindow();
+        if (!samlCancelledRef.current) {
+          setIsAuthenticating(false);
+          await showWindow();
+        }
+      } finally {
+        samlInFlightRef.current = false;
       }
     });
 
@@ -146,7 +165,13 @@ export default function App() {
   const handleGetPrelogin = useCallback(async (portal: string): Promise<void> => {
     setConnectError(null);
     try {
-      const info = await invoke<PreloginType>("get_prelogin", { portal });
+      const s = readSettings();
+      const info = await invoke<PreloginType>("get_prelogin", {
+        portal,
+        certificate: s.useClientCertificate ? (s.clientCertificate ?? null) : null,
+        sslkey: s.useClientCertificate ? (s.clientKey ?? null) : null,
+        keyPassword: s.useClientCertificate ? (s.keyPassphrase ?? null) : null,
+      });
       setPreloginInfo(info);
     } catch (e) {
       setConnectError(String(e));
@@ -156,6 +181,9 @@ export default function App() {
   const readSettings = () => JSON.parse(localStorage.getItem("gpopenui_settings") ?? "{}");
 
   const handleConnectSaml = useCallback(async (portal: string, browser: string | null) => {
+    if (samlInFlightRef.current) return;
+    samlInFlightRef.current = true;
+    samlCancelledRef.current = false;
     setIsAuthenticating(true);
     setConnectError(null);
     try {
@@ -172,8 +200,12 @@ export default function App() {
         noDtls: s.noDtls ?? false,
       });
     } catch (e) {
-      setConnectError(String(e));
-      setIsAuthenticating(false);
+      if (!samlCancelledRef.current) {
+        setConnectError(String(e));
+        setIsAuthenticating(false);
+      }
+    } finally {
+      samlInFlightRef.current = false;
     }
   }, []);
 
@@ -210,6 +242,7 @@ export default function App() {
   }, []);
 
   const handleCancelConnect = useCallback(() => {
+    samlCancelledRef.current = true;
     setIsAuthenticating(false);
     setPreloginInfo(null);
   }, []);

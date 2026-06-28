@@ -64,8 +64,18 @@ pub fn get_connection_defaults() -> ConnectionDefaults {
 }
 
 #[tauri::command]
-pub async fn get_prelogin(portal: String) -> Result<PreloginInfo, String> {
-  connect::get_prelogin(&portal).await.map_err(|e| e.to_string())
+pub async fn get_prelogin(
+  portal: String,
+  certificate: Option<String>,
+  sslkey: Option<String>,
+  key_password: Option<String>,
+) -> Result<PreloginInfo, String> {
+  let cert = CertConfig {
+    certificate: certificate.filter(|s| !s.is_empty()),
+    sslkey: sslkey.filter(|s| !s.is_empty()),
+    key_password: key_password.filter(|s| !s.is_empty()),
+  };
+  connect::get_prelogin(&portal, cert).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -87,6 +97,11 @@ pub async fn connect_saml(
   no_dtls: Option<bool>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  // Fail fast before the long SAML browser flow if the service isn't ready
+  if state.client.lock().await.is_none() {
+    return Err("Not connected to gpservice".to_string());
+  }
+
   let auth_executable = state.auth_executable.lock().await.clone();
   let auth_exec_ref = auth_executable.as_deref();
 
@@ -186,7 +201,13 @@ pub fn open_settings(app: AppHandle, section: Option<String>) -> Result<(), Stri
   }
 
   let url = match section {
-    Some(s) => format!("/?window=settings&section={}", s),
+    Some(s) => {
+      let safe: String = s
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(*c, '-' | '_'))
+        .collect();
+      format!("/?window=settings&section={}", safe)
+    }
     None => "/?window=settings".to_string(),
   };
 

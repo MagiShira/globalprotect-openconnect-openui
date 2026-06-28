@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -39,8 +39,10 @@ export default function DisconnectedView({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isCheckingPortal, setIsCheckingPortal] = useState(false);
+  const isCheckingPortalRef = useRef(false);
 
   useEffect(() => {
+    isCheckingPortalRef.current = false;
     setIsCheckingPortal(false);
   }, [preloginInfo, error]);
 
@@ -49,9 +51,11 @@ export default function DisconnectedView({
 
   const handlePortalBlur = async () => {
     const trimmed = portal.trim();
-    if (!trimmed || preloginInfo) return;
+    if (!trimmed || preloginInfo || isCheckingPortalRef.current) return;
+    isCheckingPortalRef.current = true;
     setIsCheckingPortal(true);
     await onGetPrelogin(trimmed);
+    isCheckingPortalRef.current = false;
     setIsCheckingPortal(false);
   };
 
