@@ -5,11 +5,15 @@ on:
     - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fetch upstream version
         id: upstream
@@ -25,15 +29,30 @@ jobs:
           ver=$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)
           echo "version=$ver" >> "$GITHUB_OUTPUT"
 
-      - name: Bump Cargo.toml
+      # A new upstream major means the gpservice protocol may have changed;
+      # bumping the version alone would ship an incompatible GUI.
+      - name: Refuse cross-major bump
         if: steps.upstream.outputs.version != steps.current.outputs.version
+        env:
+          UPSTREAM: ${{ steps.upstream.outputs.version }}
+          CURRENT: ${{ steps.current.outputs.version }}
         run: |
-          sed -i 's/^version = ".*"/version = "${{ steps.upstream.outputs.version }}"/' \
-            src-tauri/Cargo.toml
+          if [ "${UPSTREAM%%.*}" != "${CURRENT%%.*}" ]; then
+            echo "::error::Upstream is v$UPSTREAM, we are v$CURRENT. Major version changed: migrate gpapi/common manually."
+            exit 1
+          fi
+
+      - name: Bump Cargo.toml and Cargo.lock
+        if: steps.upstream.outputs.version != steps.current.outputs.version
+        env:
+          UPSTREAM: ${{ steps.upstream.outputs.version }}
+        run: |
+          sed -i "s/^version = \".*\"/version = \"$UPSTREAM\"/" src-tauri/Cargo.toml
+          sed -i -e '/^name = "gpgui"$/{' -e 'n' -e "s/^version = \".*\"/version = \"$UPSTREAM\"/" -e '}' src-tauri/Cargo.lock
 
       - name: Open PR
         if: steps.upstream.outputs.version != steps.current.outputs.version
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore: bump version to ${{ steps.upstream.outputs.version }} to match upstream"
           title: "Bump version to ${{ steps.upstream.outputs.version }} (upstream sync)"
